@@ -1,3 +1,6 @@
+from functools import partial
+
+from jax import jit
 from . import utils
 from . import surface_brightness as sb
 
@@ -5,6 +8,7 @@ class Density_distribution:
     
     def __init__(self, data=0):
         self.data = data  
+   
     
     def generate(self,size,extent, e, p, q, rho0, s, a, b, i, phi, theta):
         x,y,z = utils.create_grid(size,extent)
