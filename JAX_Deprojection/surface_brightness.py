@@ -8,8 +8,12 @@ class Surface_brightness:
         self.shape = shape
         self.extent = extent
 
-    def deproject(self, bounds, initial_params, optimize_mask, sigma=1. ):
-        return utils.deproject(self, bounds, initial_params, optimize_mask, sigma=1. )
+    def deproject(self,bounds, initial_params, optimize_mask,num_opt,num_fixed, sigma=1. ):
+        true_image = self.data
+        size = self.shape[0]
+        extent = self.extent
+        
+        return utils.deproject(true_image, int(size), int(extent), bounds, initial_params, optimize_mask,num_opt,num_fixed, sigma )
     
     def generate(self,size,extent, e, p, q, rho0, s, a, b, i, phi, theta):
         den = dd.Density_distribution()
