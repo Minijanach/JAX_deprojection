@@ -12,6 +12,7 @@ class Surface_brightness:
         true_image = self.data
         size = self.shape[0]
         extent = self.extent
+        
         return utils.deproject(true_image, int(size), int(extent), bounds, initial_params, optimize_mask,num_opt,num_fixed, sigma )
     
     def generate(self,size,extent, e, p, q, rho0, s, a, b, i, phi, theta):

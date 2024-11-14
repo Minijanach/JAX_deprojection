@@ -14,7 +14,7 @@ import numpy as np
 
 
 #@partial(jit, static_argnames=['size','num_opt','num_fixed'])
-def deproject(true_image, size, extent, bounds, initial_params, optimize_mask, num_opt, num_fixed, sigma=1.):
+def deproject(true_image, size,extent, bounds, initial_params, optimize_mask, num_opt, num_fixed, sigma=1.):
     """
     initial_params: Initial guess for parameters, including both known and unknown parameters. 
     Order :e, p, q, rho0, s, a, b, i, phi, theta
@@ -23,7 +23,7 @@ def deproject(true_image, size, extent, bounds, initial_params, optimize_mask, n
     sigma: Standard deviation for SSD calculation.
     """   
 
-    params_history = [] # add to return also add flag if we want history
+    
 
     # Split initial_guess and known_values based on the optimize_mask
     
@@ -39,40 +39,55 @@ def deproject(true_image, size, extent, bounds, initial_params, optimize_mask, n
     #size_false = jnp.size(optimize_mask)-size_true
     #size_false = jnp.asarray(size_false)
 
-
-    arr_true = jnp.where(optimize_mask,initial_params,0)
-    arr_false = jnp.where(~optimize_mask,initial_params,0)
-
+    # set false values nan and then filter those
+    arr_true = jnp.where(optimize_mask,initial_params,jnp.nan)
+    #print("arr_true \n",arr_true)
+    arr_false = jnp.where(~optimize_mask,initial_params,jnp.nan)
+    #print("arr_false \n",arr_false)
     nonzero_jit = jax.jit(jnp.nonzero, static_argnames = "size")
 
-    idx_true = nonzero_jit(arr_true,size = num_opt)
-    idx_false = nonzero_jit(arr_false,size = num_fixed)
+    idx_true = nonzero_jit(~jnp.isnan(arr_true),size = num_opt)
+    #print("idx_true \n",idx_true)
+    idx_false = nonzero_jit(~jnp.isnan(arr_false),size = num_fixed)
+    #print("idx_false \n",idx_false)
 
     initial_optimize_guess = arr_true[idx_true]
     fixed_params = arr_false[idx_false]
 
+
+    params_history = [initial_optimize_guess[0]] # add to return also add flag if we want history
+
+    x, y, z = create_grid(size,extent)
+
     
     def callback(xk):
         # Save the current optimized parameters at each step
-        full_params = combine_params(xk, fixed_params, optimize_mask)
-        params_history.append(full_params)
+        #full_params = combine_params(xk, fixed_params, optimize_mask)
+        params_history.append(xk[0])
 
     #partial_ssd_score = partial(ssd_score_for_minimize,args =(size , extent, true_image, sigma, fixed_params, optimize_mask))
 
     #ssd_score_for_minimize_jit = jax.jit(partial_ssd_score)
 
     optimizer = ScipyBoundedMinimize(fun=ssd_score_for_minimize, method='L-BFGS-B', callback=callback)
-
+    #print("Ini guess\n",initial_optimize_guess)
+    #print("fixed params\n",fixed_params)
     # Run optimizer only on the parameters to be optimized
-    result = optimizer.run(initial_optimize_guess, args=(size, extent, true_image, sigma, fixed_params, optimize_mask), bounds=bounds)
+    result = optimizer.run(initial_optimize_guess, args=(x, y, z, true_image, sigma, fixed_params, optimize_mask), bounds=bounds)
+
+    #print("res\n",result)
 
     # Combine optimized and fixed parameters for the final result
     final_params = combine_params(result[0], fixed_params, optimize_mask)
 
+    #print("final params\n",final_params)
+
     predicted_density = density_distribution.Density_distribution()
     predicted_density.generate(size, extent, *final_params)
 
-    return predicted_density
+    final_score = ssd_score(true_image, predicted_density.project().data,1.)
+
+    return predicted_density,params_history,final_score
 
 
 
@@ -114,7 +129,7 @@ def ssd_score_for_minimize(optimized_params, args):
     optimized_params: Parameters that are being optimized.
     args: Tuple containing the size, extent, true_image, sigma, fixed_params, optimize_mask.
     """
-    size , extent, true_image, sigma, fixed_params, optimize_mask = args
+    x, y, z, true_image, sigma, fixed_params, optimize_mask = args
 
     # Combine optimized and fixed parameters
     full_params = combine_params(optimized_params, fixed_params, optimize_mask)
@@ -122,8 +137,8 @@ def ssd_score_for_minimize(optimized_params, args):
     # Unpack the full parameters
     e, p, q, rho0, s, a, b, i, phi, theta = full_params
 
+
     # Generate test density and project it
-    x,y,z = create_grid(size,extent)
     data = rho(x, y, z, e, p, q, rho0, s, a, b, i, phi, theta)
     test_image = jnp.sum(data, axis = 2)
 
