@@ -10,9 +10,9 @@ class Density_distribution:
         self.data = data  
    
     
-    def generate(self,size,extent, e, p, q, rho0, s, a, b, i, phi, theta):
+    def generate(self,size,extent, e_k, e_d, p_a, p_b, p_c, p_d, q_a, q_b, q_c, q_d, rho0, s, a, b, i, phi, theta):
         x,y,z = utils.create_grid(size,extent)
-        self.data = utils.rho(x, y, z, e, p, q, rho0, s, a, b, i, phi, theta)
+        self.data = utils.rho(x, y, z, e_k, e_d, p_a, p_b, p_c, p_d, q_a, q_b, q_c, q_d, rho0, s, a, b, i, phi, theta)
      
     
     def project(self):

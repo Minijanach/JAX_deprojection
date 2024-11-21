@@ -63,7 +63,7 @@ def deproject(true_image, size,extent, bounds, initial_params, optimize_mask, nu
     def callback(xk):
         # Save the current optimized parameters at each step
         #full_params = combine_params(xk, fixed_params, optimize_mask)
-        params_history.append(xk[0])
+        params_history.append(xk)
 
     #partial_ssd_score = partial(ssd_score_for_minimize,args =(size , extent, true_image, sigma, fixed_params, optimize_mask))
 
@@ -75,7 +75,7 @@ def deproject(true_image, size,extent, bounds, initial_params, optimize_mask, nu
     # Run optimizer only on the parameters to be optimized
     result = optimizer.run(initial_optimize_guess, args=(x, y, z, true_image, sigma, fixed_params, optimize_mask), bounds=bounds)
 
-    #print("res\n",result)
+    print("res\n",result[0])
 
     # Combine optimized and fixed parameters for the final result
     final_params = combine_params(result[0], fixed_params, optimize_mask)
@@ -135,11 +135,11 @@ def ssd_score_for_minimize(optimized_params, args):
     full_params = combine_params(optimized_params, fixed_params, optimize_mask)
 
     # Unpack the full parameters
-    e, p, q, rho0, s, a, b, i, phi, theta = full_params
+    e_k, e_d, p_a, p_b, p_c, p_d, q_a, q_b, q_c, q_d, rho0, s, a, b, i, phi, theta = full_params
 
 
     # Generate test density and project it
-    data = rho(x, y, z, e, p, q, rho0, s, a, b, i, phi, theta)
+    data = rho(x, y, z, e_k, e_d, p_a, p_b, p_c, p_d, q_a, q_b, q_c, q_d, rho0, s, a, b, i, phi, theta)
     test_image = jnp.sum(data, axis = 2)
 
     # Calculate SSD
@@ -206,13 +206,18 @@ def rotation(x,y,z,angle,axis):
     return x_rot, y_rot, z_rot
 
 
-def calculate_rho(x, y, z, e, p, q, rho0, s, a, b):
-    r = ((jnp.abs(x)**(2 - e) + (jnp.abs(y) / p)**(2 - e) + (jnp.abs(z) / q)**(2 - e)))**(1 / (2 - e))
-    den = rho0 / ((r / s)**a * (1 + (r / s))**(b - a))
+def calculate_rho(x, y, z, e_k,e_d, p_a,p_b,p_c,p_d, q_a,q_b,q_c,q_d, rho0, s, a, b):
+    r = (jnp.abs(x)**2 + jnp.abs(y)**2 + jnp.abs(z)**2)**(1/2)
+    e = e_k * r + e_d
+    p = p_a * r**3 + p_b * r**2 + p_c * r + p_d
+    q = q_a * r**3 + q_b * r**2 + q_c * r + q_d
+
+    m = ((jnp.abs(x)**(2 - e) + (jnp.abs(y) / p)**(2 - e) + (jnp.abs(z) / q)**(2 - e)))**(1 / (2 - e))
+    den = rho0 / ((m / s)**a * (1 + (m / s))**(b - a))
     
     return den/(p*q)
 
-def rho(x, y, z, e, p, q, rho0, s, a, b, i, phi, theta):
+def rho(x, y, z, e_k, e_d, p_a, p_b, p_c, p_d, q_a, q_b, q_c, q_d, rho0, s, a, b, i, phi, theta):
     # Rotate inputs to arrays
     x,y,z = rotation(x,y,z,i,'x')
     x,y,z = rotation(x,y,z,phi,'y')
@@ -220,7 +225,7 @@ def rho(x, y, z, e, p, q, rho0, s, a, b, i, phi, theta):
 
     # Check if inputs are arrays or scalars
     if x.ndim == 0:  # Scalar input
-        return calculate_rho(x, y, z, e, p, q, rho0, s, a, b)
+        return calculate_rho(x, y, z, e_k, e_d, p_a, p_b, p_c, p_d, q_a, q_b, q_c, q_d, rho0, s, a, b)
     else:  # Array input
         # Check if inputs have the same length
         if x.size != y.size or x.size != z.size or y.size != z.size:
@@ -231,7 +236,7 @@ def rho(x, y, z, e, p, q, rho0, s, a, b, i, phi, theta):
         if cube_len ** 3 != x.size:
             raise ValueError("The length of the inputs must be reshapeable into a cube!")
 
-        return calculate_rho(x, y, z, e, p, q, rho0, s, a, b).reshape((cube_len, cube_len, cube_len))
+        return calculate_rho(x, y, z, e_k, e_d, p_a, p_b, p_c, p_d, q_a, q_b, q_c, q_d, rho0, s, a, b).reshape((cube_len, cube_len, cube_len))
     
 
 #------------------- Gradients -----------------------------
