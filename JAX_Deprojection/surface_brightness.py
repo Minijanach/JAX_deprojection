@@ -7,6 +7,8 @@ class Surface_brightness:
         self.data = data
         self.shape = shape
         self.extent = extent
+        self.x_coord = 0
+        self.y_coord = 0
 
     def deproject(self,bounds, initial_params, optimize_mask,num_opt,num_fixed, sigma=1. ):
         true_image = self.data
@@ -22,3 +24,5 @@ class Surface_brightness:
         self.data = data
         self.shape = self.data.shape
         self.extent = extent
+        self.x_coord = den.x_coord
+        self.y_coord = den.y_coord
