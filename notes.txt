@@ -1,0 +1,3 @@
+Truncated norm for the mean parameters
+rename linear mean params from a/b to something else
+Nuts/HMC

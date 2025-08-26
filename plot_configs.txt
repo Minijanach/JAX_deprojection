@@ -1,0 +1,7 @@
+adam_0.1_elbo_10_polynom
+adam 0.1 elbo 10 standart all 1
+adam 0.1 elbo 10 standart all 0
+adam 0.1 elbo 10 standart constant p 0.7 
+adam 0.1 elbo 1 standart constant p 0.7 
+adam 0.1 elbo 1 standart polynom
+adam 0.01 elbo 1 standart polynom
